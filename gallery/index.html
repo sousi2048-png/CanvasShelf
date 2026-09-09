@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f1eb">
+    <title>CanvasShelf — Local image gallery</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css?v=20260909-canvasshelf">
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="CanvasShelf ホーム">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span>
+          <strong>CanvasShelf</strong>
+          <small>your saved visual notes</small>
+        </span>
+      </a>
+      <nav id="collection-nav" class="top-nav" aria-label="コレクション">
+        <a href="/Collection" data-collection-link="Collection">Collection</a>
+        <a href="/Collection 2" data-collection-link="Collection 2">Collection 2</a>
+      </nav>
+    </header>
+
+    <main class="site-main">
+      <section id="home-view" class="view home-view" aria-labelledby="home-title">
+        <div class="hero-copy">
+          <p class="eyebrow">A QUIET PLACE FOR GOOD REFERENCES</p>
+          <h1 id="home-title">集めた画像を、<em>眺める。</em></h1>
+          <p class="hero-lede">Pinterestのように、保存したPinを気分よく見返せるローカルギャラリーです。保存先を選んで、画像をクリックすると大きく表示できます。</p>
+        </div>
+        <div class="collection-actions" aria-label="コレクションの更新">
+          <div class="collection-actions-copy">
+            <span class="collection-actions-kicker">COLLECTIONS</span>
+            <span>Arts/ に追加したフォルダを一覧へ反映</span>
+          </div>
+          <button id="sync-collections" class="sync-button" type="button">
+            <span class="sync-button-icon" aria-hidden="true">↻</span>
+            <span>フォルダを更新</span>
+          </button>
+          <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="folder-cards" class="folder-grid" aria-live="polite">
+          <div class="loading-card"><span class="loader"></span> コレクションを読み込んでいます…</div>
+        </div>
+        <div class="home-note">
+          <span class="note-dot"></span>
+          <span>画像はこのMacの中だけで表示されます</span>
+          <span class="note-line"></span>
+          <span>クリックで拡大 / Escで閉じる</span>
+        </div>
+      </section>
+
+      <section id="gallery-view" class="view gallery-view" hidden aria-labelledby="gallery-title">
+        <div class="gallery-heading">
+          <div>
+            <a class="back-link" href="/">← コレクション</a>
+            <p class="eyebrow" id="gallery-eyebrow">LOCAL COLLECTION</p>
+            <h1 id="gallery-title">Collection</h1>
+          </div>
+          <div class="gallery-stat">
+            <span id="image-count">0</span>
+            <small>images</small>
+          </div>
+        </div>
+
+        <section id="collection-memo" class="collection-memo" hidden aria-label="コレクションのメモ"></section>
+
+        <div class="toolbar">
+          <label class="search-box">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <span class="sr-only">画像を検索</span>
+            <input id="search-input" type="search" placeholder="ファイル名で検索…" autocomplete="off">
+          </label>
+          <label class="sort-box">
+            <span>並び順</span>
+            <select id="sort-select">
+              <option value="newest">新しい順</option>
+              <option value="oldest">古い順</option>
+              <option value="name">名前順</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="gallery-grid" class="masonry-grid" aria-live="polite"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <span class="empty-mark">◎</span>
+          <h2>まだ画像がありません</h2>
+          <p>このフォルダにPin画像を保存すると、ここに表示されます。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>CANVASSHELF</span>
+      <span>LOCAL · PRIVATE · UNCLUTTERED</span>
+    </footer>
+
+    <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="lightbox-caption">
+      <button id="lightbox-close" class="lightbox-close" type="button" aria-label="閉じる">×</button>
+      <button id="lightbox-prev" class="lightbox-arrow lightbox-prev" type="button" aria-label="前の画像">‹</button>
+      <figure class="lightbox-figure">
+        <img id="lightbox-image" alt="">
+        <figcaption id="lightbox-caption"></figcaption>
+      </figure>
+      <button id="lightbox-next" class="lightbox-arrow lightbox-next" type="button" aria-label="次の画像">›</button>
+    </div>
+
+    <div id="gallery-toast" class="gallery-toast" hidden role="status" aria-live="polite"></div>
+
+    <script src="/app.js?v=20260909-canvasshelf" defer></script>
+  </body>
+</html>

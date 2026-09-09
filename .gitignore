@@ -1,0 +1,23 @@
+# ローカル専用ドキュメント・設定
+README_ja.md
+.gallery_preferences.json
+
+# 画像・ダウンロード生成物（リポジトリへ登録しない）
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.avif
+*.bmp
+*.tif
+*.tiff
+*.heic
+*.ico
+
+# macOS / Python / 一時ファイル
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
