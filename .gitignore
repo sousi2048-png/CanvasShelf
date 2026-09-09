@@ -49,3 +49,11 @@ venv/
 *.log
 output/
 .playwright-cli/
+
+# ローカルで作成するデスクトップ配布物
+build/
+dist/
+release/
+*.exe
+*.app/
+*.spec

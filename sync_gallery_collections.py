@@ -85,11 +85,26 @@ def make_id(name: str, existing_ids: set[str], path: Path) -> str:
     return candidate
 
 
-def relative_config_path(path: Path) -> str:
-    return os.path.relpath(path, ROOT_DIR).replace(os.sep, "/")
+def relative_config_path(path: Path, base: Path = ROOT_DIR) -> str:
+    resolved_path = path.resolve()
+    try:
+        return os.path.relpath(resolved_path, base.resolve()).replace(os.sep, "/")
+    except ValueError:
+        # Windowsで別ドライブにある画像フォルダーは相対化できない。
+        return str(resolved_path)
 
 
-def discover_new_collections(arts_dir: Path, config: Dict[str, Any]) -> List[Dict[str, str]]:
+def discover_new_collections(
+    arts_dir: Path,
+    config: Dict[str, Any],
+    config_base: Path = ROOT_DIR,
+) -> List[Dict[str, str]]:
+    """Arts直下の新規フォルダーを見つける。
+
+    設定ファイルと画像フォルダーの相対関係を保てるよう、配布版など
+    設定ファイルの場所がソースディレクトリと異なる場合は ``config_base``
+    を渡す。
+    """
     existing_collections = config["collections"]
     existing_paths = set()
     existing_ids = set()
@@ -98,7 +113,7 @@ def discover_new_collections(arts_dir: Path, config: Dict[str, Any]) -> List[Dic
             continue
         path_value = collection.get("path")
         if isinstance(path_value, str) and path_value.strip():
-            existing_paths.add(resolve_path(Path(path_value)))
+            existing_paths.add(resolve_path(Path(path_value), config_base))
         collection_id = collection.get("id")
         if isinstance(collection_id, str):
             existing_ids.add(collection_id)
@@ -118,7 +133,7 @@ def discover_new_collections(arts_dir: Path, config: Dict[str, Any]) -> List[Dic
             {
                 "id": collection_id,
                 "label": directory.name,
-                "path": relative_config_path(resolved_directory),
+                "path": relative_config_path(resolved_directory, config_base),
                 "description": f"{directory.name} のローカル画像",
                 "accent": ACCENTS[(len(existing_collections) + len(additions)) % len(ACCENTS)],
             }

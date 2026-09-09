@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import webbrowser
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -36,11 +37,39 @@ except ImportError:  # スクリプトとして直接起動した場合
     )
 
 
-ROOT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = ROOT_DIR.parent
-STATIC_DIR = ROOT_DIR / "gallery"
+CODE_DIR = Path(__file__).resolve().parent
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def _frozen_data_dir() -> Path:
+    """配布版が設定を書き込むユーザーごとのデータディレクトリを返す。"""
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "CanvasShelf"
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA")
+        base = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
+        return base / "CanvasShelf"
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(xdg_config_home) if xdg_config_home else Path.home() / ".config"
+    return base / "CanvasShelf"
+
+
+# ソース実行時はリポジトリ内、PyInstaller配布版はOSのユーザー領域を基準にする。
+# PyInstallerの静的ファイルは一時展開先（_MEIPASS）から読み込む。
+if IS_FROZEN:
+    ROOT_DIR = _frozen_data_dir()
+    BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", CODE_DIR))
+    PROJECT_DIR = ROOT_DIR.parent
+    STATIC_DIR = BUNDLE_DIR / "gallery"
+    ARTS_DIR = ROOT_DIR / "Arts"
+else:
+    ROOT_DIR = CODE_DIR
+    BUNDLE_DIR = CODE_DIR
+    PROJECT_DIR = ROOT_DIR.parent
+    STATIC_DIR = ROOT_DIR / "gallery"
+    ARTS_DIR = PROJECT_DIR / "Arts"
+
 COLLECTION_CONFIG_PATH = ROOT_DIR / "gallery_collections.json"
-ARTS_DIR = PROJECT_DIR / "Arts"
 PREFERENCES_PATH = ROOT_DIR / ".gallery_preferences.json"
 TRASH_DIR = Path.home() / ".Trash"
 SYNC_LOCK = threading.Lock()
@@ -131,7 +160,13 @@ def resolve_collection_path(path_text: str) -> Path:
 
 def relative_config_path(path: Path) -> str:
     """CanvasShelf基準の相対パスへ変換する。"""
-    return os.path.relpath(path.resolve(), ROOT_DIR).replace(os.sep, "/")
+    resolved_path = path.resolve()
+    try:
+        return os.path.relpath(resolved_path, ROOT_DIR).replace(os.sep, "/")
+    except ValueError:
+        # Windowsで別ドライブを選んだ場合は相対パスを表現できないため、
+        # そのパスだけ絶対表記で保存する。
+        return str(resolved_path)
 
 
 def load_raw_collection_config() -> Dict[str, object]:
@@ -528,7 +563,7 @@ def sync_collections() -> List[Dict[str, str]]:
     """Arts/を走査し、新しい画像フォルダを設定へ追記する。"""
     with COLLECTIONS_LOCK, SYNC_LOCK:
         config = load_sync_config(COLLECTION_CONFIG_PATH)
-        additions = discover_new_collections(ARTS_DIR, config)
+        additions = discover_new_collections(ARTS_DIR, config, config_base=ROOT_DIR)
         if additions:
             config["collections"].extend(additions)
             write_sync_config(COLLECTION_CONFIG_PATH, config)
@@ -941,10 +976,13 @@ def main() -> None:
     server = ThreadingHTTPServer((args.host, args.port), GalleryHandler)
     url = f"http://{args.host}:{args.port}/"
     print(f"CanvasShelf gallery: {url}", flush=True)
-    if args.open:
+    # 配布版はダブルクリックだけでブラウザーを開く。ソース版は --open のみ。
+    if args.open or IS_FROZEN:
         try:
-            subprocess.Popen(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except OSError:
+            opened = webbrowser.open(url, new=2)
+            if not opened:
+                print("ブラウザを自動で開けませんでした。上のURLを開いてください。", file=sys.stderr)
+        except (OSError, webbrowser.Error):
             print("ブラウザを自動で開けませんでした。上のURLを開いてください。", file=sys.stderr)
     try:
         server.serve_forever()

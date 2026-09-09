@@ -49,6 +49,23 @@ class GalleryCollectionSyncTests(unittest.TestCase):
             config["collections"].extend(additions)
             self.assertEqual([item["label"] for item in config["collections"]], ["Existing", "New"])
 
+    def test_config_base_controls_relative_paths(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            config_base = root / "app-data"
+            arts_dir = root / "Arts"
+            new_directory = arts_dir / "New"
+            new_directory.mkdir(parents=True)
+            (new_directory / "sample.jpg").write_bytes(b"image")
+
+            additions = sync.discover_new_collections(
+                arts_dir,
+                {"collections": []},
+                config_base=config_base,
+            )
+
+            self.assertEqual(additions[0]["path"], "../Arts/New")
+
 
 if __name__ == "__main__":
     unittest.main()
