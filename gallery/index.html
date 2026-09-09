@@ -34,17 +34,18 @@
           <p class="hero-lede">Pinterestのように、保存したPinを気分よく見返せるローカルギャラリーです。保存先を選んで、画像をクリックすると大きく表示できます。</p>
         </div>
         <div class="home-actions-grid">
-          <div class="collection-actions" aria-label="コレクションの更新">
+          <section class="collection-actions" aria-labelledby="collection-sync-title">
             <div class="collection-actions-copy">
-              <span class="collection-actions-kicker">COLLECTIONS</span>
-              <span>Arts/ に追加したフォルダを一覧へ反映</span>
+              <p class="collection-actions-kicker">COLLECTIONS</p>
+              <h2 id="collection-sync-title">フォルダ一覧を更新</h2>
+              <p class="collection-actions-description">Arts/ に追加したフォルダを一覧へ反映します。<br>新しいフォルダもここから確認できます。</p>
+              <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
             </div>
             <button id="sync-collections" class="sync-button" type="button">
               <span class="sync-button-icon" aria-hidden="true">↻</span>
               <span>フォルダを更新</span>
             </button>
-            <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
-          </div>
+          </section>
           <section class="folder-picker" aria-labelledby="folder-picker-title">
             <div class="folder-picker-copy">
               <p class="collection-actions-kicker">BROWSE SOURCES</p>

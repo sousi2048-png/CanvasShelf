@@ -89,16 +89,17 @@ h1 em { color: var(--coral); font-style: italic; }
 .hero-lede { max-width: 590px; margin-bottom: 0; color: #6f6962; font-size: 15px; line-height: 1.9; }
 .home-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 18px; margin-top: 40px; }
 .collection-actions { display: flex; width: 100%; max-width: none; min-height: 190px; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; margin-top: 0; padding: 22px 24px; border: 1px solid rgb(34 33 31 / 10%); border-radius: 20px; background: rgb(255 253 249 / 62%); box-shadow: 0 10px 24px rgb(57 45 34 / 4%); }
-.collection-actions-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; justify-content: flex-start; gap: 5px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.collection-actions-copy { min-width: 0; flex: 1; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .collection-actions-kicker { color: var(--coral-deep); font-size: 8px; font-weight: 800; letter-spacing: .21em; }
+.collection-actions-copy h2, .folder-picker-copy h2 { margin: 6px 0 7px; color: var(--ink); font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: -.03em; line-height: 1.5; }
+.collection-actions-description { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .sync-button { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; gap: 7px; padding: 10px 15px; border: 0; border-radius: 999px; background: var(--ink); color: white; cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; transition: background .2s ease, transform .2s ease, opacity .2s ease; }
 .sync-button:hover { background: var(--coral); transform: translateY(-1px); }
 .sync-button:disabled { cursor: wait; opacity: .68; transform: none; }
 .sync-button-icon { font-size: 18px; font-weight: 400; line-height: .7; }
 .sync-button.is-busy .sync-button-icon { animation: spin .8s linear infinite; }
-.sync-status { min-width: 10em; min-height: 1.4em; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.sync-status { display: block; min-width: 10em; min-height: 1.4em; margin-top: 10px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .folder-picker { display: flex; min-height: 190px; flex-direction: column; align-items: stretch; justify-content: space-between; gap: 16px; margin-top: 0; padding: 22px 24px; border: 1px solid rgb(34 33 31 / 10%); border-radius: 20px; background: rgb(255 253 249 / 48%); }
-.folder-picker-copy h2 { margin: 6px 0 7px; font-family: Georgia, serif; font-size: 25px; font-weight: 400; letter-spacing: -.03em; }
 .folder-picker-copy p:last-child { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .folder-picker-controls { min-width: 0; }
 .folder-picker-button { width: 100%; }
@@ -280,7 +281,7 @@ body.modal-open { overflow: hidden; }
   .hero-lede { font-size: 13px; }
   .preview-stack { width: 185px; transform: scale(.86); transform-origin: bottom left; }
   .folder-card { padding: 22px; }
-  .folder-picker-copy h2 { font-size: 22px; }
+  .collection-actions-copy h2, .folder-picker-copy h2 { font-size: 22px; }
   .folder-path-row .sync-button { width: 100%; flex-basis: 100%; }
   .masonry-grid { column-count: 2; }
   .masonry-grid[data-sort="name"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
