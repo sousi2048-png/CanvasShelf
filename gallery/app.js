@@ -339,9 +339,12 @@
     setActiveCollection(null);
     const homeSort = HOME_SORT_VALUES.has(state.homeSort) ? state.homeSort : "manual";
     $("#home-sort-select").value = homeSort;
-    $("#home-sort-help").textContent = homeSort === "manual"
-      ? "カードをドラッグして並び替えできます。並び順は自動で保存されます。"
-      : "並び替えを「手動順」にすると、カードをドラッグして順番を変更できます。";
+    $("#home-sort-help").textContent = {
+      manual: "カードをドラッグして並び替えできます。並び順は自動で保存されます。",
+      newest: "フォルダ内画像の更新日時が新しい順に表示しています。",
+      oldest: "フォルダ内画像の更新日時が古い順に表示しています。",
+      name: "フォルダ名の順に表示しています。",
+    }[homeSort];
     const cardRoot = $("#folder-cards");
     cardRoot.replaceChildren();
     if (!state.collections.length) {
