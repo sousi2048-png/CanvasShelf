@@ -1,6 +1,11 @@
 # ローカル専用ドキュメント・設定
 README_ja.md
 .gallery_preferences.json
+gallery_collections.json
+
+# 閲覧対象の実データ・メモ（公開リポジトリへ登録しない）
+Arts/
+memo.md
 
 # 画像・ダウンロード生成物（リポジトリへ登録しない）
 *.jpg

@@ -8,6 +8,12 @@ from CanvasShelf import server
 
 
 class GalleryConfigTests(unittest.TestCase):
+    def test_missing_config_starts_with_empty_collections(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            config_path = Path(directory_name) / "collections.json"
+            with patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                self.assertEqual(server.load_collections(), [])
+
     def test_loads_relative_and_absolute_collection_paths(self):
         with tempfile.TemporaryDirectory() as directory_name:
             root = Path(directory_name)

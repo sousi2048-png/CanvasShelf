@@ -48,10 +48,8 @@ COLLECTIONS_LOCK = threading.Lock()
 PREFERENCES_LOCK = threading.Lock()
 DELETE_LOCK = threading.Lock()
 MEMO_LOCK = threading.Lock()
-DEFAULT_COLLECTIONS = [
-    {"id": "Collection", "label": "Collection", "path": "../Arts/Collection", "description": "日常のひらめきと、あとで見返したい画像", "accent": "coral"},
-    {"id": "Collection 2", "label": "Collection 2", "path": "../Arts/Collection 2", "description": "別にまとめておきたい、もうひとつのコレクション", "accent": "sage"},
-]
+# 設定ファイルがない新規環境では、個人用フォルダを推測せず空の一覧から始める。
+DEFAULT_COLLECTIONS: List[Dict[str, object]] = []
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 IMAGE_EXTENSIONS = {
     ".avif",

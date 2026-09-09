@@ -43,7 +43,7 @@ The home page has two folder-management actions:
 
 Registering or removing a folder changes only CanvasShelf's collection list. It never moves, edits, or deletes the local folder or its images. A folder removed from the filesystem is automatically omitted from the site while its configuration entry is retained; restoring the same path makes it available again.
 
-Collection definitions are stored in `gallery_collections.json`. Paths are resolved relative to the CanvasShelf directory, and folders outside the project are stored as relative paths as well. The folder picker accepts an absolute path when necessary and converts it when saving.
+Collection definitions are stored locally in `gallery_collections.json`, which is intentionally ignored by Git because it can contain private folder names. A safe empty template is provided as `gallery_collections.example.json`; copy it to `gallery_collections.json` if you want to create the file manually. Paths are resolved relative to the CanvasShelf directory, and folders outside the project are stored as relative paths as well. The folder picker accepts an absolute path when necessary and converts it when saving.
 
 The command-line equivalent of **Refresh folders** is:
 
@@ -64,7 +64,7 @@ Relative arguments are resolved from the CanvasShelf directory. `--dry-run` repo
 
 The **Collection order** selector supports:
 
-- **Manual** — drag cards to reorder them. The order is written to `gallery_collections.json`.
+- **Manual** — drag cards to reorder them. The order is written to the local `gallery_collections.json`.
 - **Newest** — collections whose images were modified most recently first.
 - **Oldest** — collections whose oldest image is earliest first.
 - **Name** — collection label in name order.
@@ -86,7 +86,7 @@ Each collection page provides:
 
 ## Files and privacy
 
-`gallery_collections.json` contains collection metadata and paths. `.gallery_preferences.json` contains runtime sort preferences and is ignored by Git; the browser also keeps a copy for resilient restoration. Image files and generated local data are excluded from the repository by `.gitignore`.
+`gallery_collections.json` contains collection metadata and paths and is ignored by Git because it may identify a user's local folders. `gallery_collections.example.json` is the sanitized template committed to this repository. `.gallery_preferences.json` contains runtime sort preferences and is also ignored by Git; the browser keeps a copy for resilient restoration. Image files, `Arts/`, `memo.md`, and other generated local data are excluded from the repository by `.gitignore`.
 
 The server binds to loopback (`127.0.0.1`) by default. Change the bind address explicitly only when you understand the implications of exposing the gallery to another network.
 
