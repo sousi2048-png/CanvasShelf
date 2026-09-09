@@ -718,6 +718,11 @@
       if (event.key === "Escape") closeLightbox();
       if (event.key === "ArrowLeft") moveLightbox(-1);
       if (event.key === "ArrowRight") moveLightbox(1);
+      if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+        const key = event.key.toLowerCase();
+        if (key === "a") moveLightbox(-1);
+        if (key === "s") moveLightbox(1);
+      }
     });
 
     try {

@@ -115,7 +115,7 @@ Each collection page provides:
 - Per-collection image sorting by **Newest**, **Oldest**, or **Name**. The choice is saved in both the browser and the local server, so it is restored after navigation and restart. Name order places images from left to right in each row.
 - A memo area above the grid for the folder's root-level `memo.md`.
 - An **Edit memo** button that opens the editor only when clicked. Saving creates `memo.md` when it is missing, updates the file in place, and immediately refreshes the displayed memo. Markdown headings (levels 1–3) and bullet lists are rendered. `Cmd/Ctrl+Enter` also saves; memo input is limited to 512 KiB.
-- Click-to-enlarge lightbox viewing, arrow-key navigation, and `Esc` to close.
+- Click-to-enlarge lightbox viewing, `A`/`S` or arrow-key navigation, and `Esc` to close.
 - A delete action with confirmation. Images are moved to the executing user's `.Trash` directory instead of being permanently deleted; an available numbered name is chosen if the Trash already contains the same filename.
 
 ## Files and privacy
