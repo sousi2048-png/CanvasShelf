@@ -1,6 +1,8 @@
 # CanvasShelf
 
-CanvasShelf is a local image viewer with a responsive masonry layout. It serves the shared image collections under `../Arts/` and keeps the viewer UI separate from the image downloader extension.
+CanvasShelf is a local image viewer that arranges images in a responsive masonry layout. It can register image folders on the local computer and keeps the viewer configuration separate from the ShortcutSave downloader extension.
+
+No particular folder layout is required. If an `../Arts/` directory exists next to the project, CanvasShelf can scan it as a convenience; otherwise, folders can be registered directly from the home page.
 
 ## Run
 
@@ -10,18 +12,38 @@ Install [uv](https://docs.astral.sh/uv/) and run:
 ./run_gallery.sh
 ```
 
-The server opens `http://127.0.0.1:8765/`. The home page lists configured collections from `gallery_collections.json`; each collection has a responsive masonry layout, memo display, search, and lightbox preview.
+Pass a different port as the first argument when needed:
 
-Use **Refresh folders** on the home page to scan `../Arts/` and register newly added image folders without restarting the server. Use **Choose folders to browse** to register any local folder; registration only changes the gallery configuration and never moves or deletes local files. Each collection remembers its own sort order (newest, oldest, or name) in the browser and local server. Name sorting flows left-to-right in rows.
+```sh
+./run_gallery.sh 9000
+```
 
-Hover an image and choose the trash icon to move it to the operating system's Trash. A confirmation is required, and files are never permanently deleted by the gallery.
+The server opens `http://127.0.0.1:8765/` by default. The home page lists the registered collections from `gallery_collections.json`; collections whose local folder no longer exists are omitted automatically.
 
-## Add collections
+## Manage folders
 
-Add an entry to `gallery_collections.json`, choose a folder from the home page, or place a new image folder under `../Arts/` and run:
+The home page provides two folder-management actions:
+
+- **Choose folders to browse** registers any local image folder. Registering or removing a folder only changes the gallery configuration; it never moves, edits, or deletes the local folder or its images. Registered paths are stored in `gallery_collections.json`.
+- **Refresh folders** scans `../Arts/` relative to the CanvasShelf directory and appends newly added child folders that contain supported images. This is optional and does not require a server restart.
+
+The refresh action is also available from the command line:
 
 ```sh
 ./sync_gallery_collections.sh
 ```
 
-The synchronizer appends only new image directories and supports `--dry-run` to preview changes. Relative paths in the configuration are resolved from this directory.
+Use `--arts-dir /path/to/Arts` to scan another directory or `--dry-run` to preview additions without writing the configuration. Relative paths in the configuration are resolved from the CanvasShelf directory; absolute paths are also accepted for folders outside the project.
+
+## Browse collections
+
+Each collection page provides:
+
+- A responsive masonry layout for local images.
+- The folder's root-level `memo.md`, when present, above the image grid.
+- Filename search and per-collection sorting by newest, oldest, or name.
+- Persistent sort preferences in the browser and local server. Name sorting places images from left to right in each row.
+- Click-to-enlarge lightbox preview, with arrow-key navigation and `Esc` to close.
+- A trash action with confirmation that moves an image to the operating system's Trash instead of permanently deleting it.
+
+Images and local configuration are intentionally excluded from this repository; each user supplies and registers their own folders.
