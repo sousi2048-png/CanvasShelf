@@ -24,12 +24,14 @@ try:
     from .sync_gallery_collections import (
         discover_new_collections,
         load_config as load_sync_config,
+        make_id,
         write_config as write_sync_config,
     )
 except ImportError:  # スクリプトとして直接起動した場合
     from sync_gallery_collections import (
         discover_new_collections,
         load_config as load_sync_config,
+        make_id,
         write_config as write_sync_config,
     )
 
@@ -42,6 +44,7 @@ ARTS_DIR = PROJECT_DIR / "Arts"
 PREFERENCES_PATH = ROOT_DIR / ".gallery_preferences.json"
 TRASH_DIR = Path.home() / ".Trash"
 SYNC_LOCK = threading.Lock()
+COLLECTIONS_LOCK = threading.Lock()
 PREFERENCES_LOCK = threading.Lock()
 DELETE_LOCK = threading.Lock()
 DEFAULT_COLLECTIONS = [
@@ -64,6 +67,7 @@ IMAGE_EXTENSIONS = {
 MEMO_FILENAME = "memo.md"
 MAX_MEMO_SIZE = 512 * 1024
 SORT_VALUES = {"newest", "oldest", "name"}
+MAX_REQUEST_SIZE = 64 * 1024
 
 
 class CollectionConfigError(ValueError):
@@ -84,8 +88,8 @@ def load_collections() -> List[Dict[str, object]]:
         raise CollectionConfigError(f"コレクション設定を読み込めません: {exc}") from exc
 
     raw_collections = payload.get("collections") if isinstance(payload, dict) else None
-    if not isinstance(raw_collections, list) or not raw_collections:
-        raise CollectionConfigError("collections は1件以上の配列で指定してください。")
+    if not isinstance(raw_collections, list):
+        raise CollectionConfigError("collections は配列で指定してください。")
 
     collections: List[Dict[str, object]] = []
     seen_ids = set()
@@ -101,10 +105,7 @@ def load_collections() -> List[Dict[str, object]]:
             raise CollectionConfigError(f"コレクションIDが重複しています: {collection_id}")
         if not label or not path_text:
             raise CollectionConfigError(f"collections[{index}] には label と path が必要です。")
-        path = Path(path_text).expanduser()
-        if not path.is_absolute():
-            path = ROOT_DIR / path
-        resolved_path = path.resolve()
+        resolved_path = resolve_collection_path(path_text)
         if not resolved_path.is_dir():
             continue
         collections.append(
@@ -118,6 +119,137 @@ def load_collections() -> List[Dict[str, object]]:
         )
         seen_ids.add(collection_id)
     return collections
+
+
+def resolve_collection_path(path_text: str) -> Path:
+    """設定ファイルのパスをCanvasShelf基準で解決する。"""
+    path = Path(path_text).expanduser()
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    return path.resolve()
+
+
+def relative_config_path(path: Path) -> str:
+    """CanvasShelf基準の相対パスへ変換する。"""
+    return os.path.relpath(path.resolve(), ROOT_DIR).replace(os.sep, "/")
+
+
+def load_raw_collection_config() -> Dict[str, object]:
+    """欠落フォルダを含む設定を、編集用に読み込む。"""
+    payload = load_sync_config(COLLECTION_CONFIG_PATH)
+    if not isinstance(payload.get("collections"), list):
+        raise CollectionConfigError("collections は配列で指定してください。")
+    return payload
+
+
+def add_collection(path_text: str) -> Dict[str, str]:
+    """閲覧対象としてフォルダを登録する（実ファイルは変更しない）。"""
+    if not isinstance(path_text, str) or not path_text.strip():
+        raise ValueError("フォルダのパスが必要です。")
+    resolved_path = resolve_collection_path(path_text.strip())
+    if not resolved_path.is_dir():
+        raise FileNotFoundError("指定したフォルダが見つかりません。")
+
+    with COLLECTIONS_LOCK:
+        config = load_raw_collection_config()
+        raw_collections = config["collections"]
+        existing_ids = set()
+        for raw in raw_collections:
+            if not isinstance(raw, dict):
+                continue
+            collection_id = raw.get("id")
+            if isinstance(collection_id, str):
+                existing_ids.add(collection_id)
+            configured_path = raw.get("path")
+            if isinstance(configured_path, str) and configured_path.strip():
+                if resolve_collection_path(configured_path) == resolved_path:
+                    raise FileExistsError("このフォルダはすでに登録されています。")
+
+        collection_id = make_id(resolved_path.name, existing_ids, resolved_path)
+        collection = {
+            "id": collection_id,
+            "label": resolved_path.name or str(resolved_path),
+            "path": relative_config_path(resolved_path),
+            "description": f"{resolved_path.name or '選択したフォルダ'} のローカル画像",
+            "accent": ("coral", "sage", "blue", "amber")[len(raw_collections) % 4],
+        }
+        raw_collections.append(collection)
+        write_sync_config(COLLECTION_CONFIG_PATH, config)
+        return collection
+
+
+def remove_collection(collection_id: str) -> Dict[str, str]:
+    """閲覧対象の登録だけを削除する（実フォルダ・画像は削除しない）。"""
+    if not isinstance(collection_id, str) or not COLLECTION_ID_PATTERN.fullmatch(collection_id):
+        raise ValueError("コレクションIDが不正です。")
+    with COLLECTIONS_LOCK:
+        config = load_raw_collection_config()
+        raw_collections = config["collections"]
+        for index, raw in enumerate(raw_collections):
+            if isinstance(raw, dict) and raw.get("id") == collection_id:
+                removed = dict(raw)
+                raw_collections.pop(index)
+                write_sync_config(COLLECTION_CONFIG_PATH, config)
+                return {
+                    "id": collection_id,
+                    "label": str(removed.get("label", collection_id)),
+                    "path": str(removed.get("path", "")),
+                }
+    raise KeyError("Unknown collection")
+
+
+def pick_folder_with_os_dialog() -> Path:
+    """OS標準のフォルダ選択ダイアログを開き、選択結果を返す。"""
+    if sys.platform == "darwin":
+        result = subprocess.run(
+            [
+                "osascript",
+                "-e",
+                'POSIX path of (choose folder with prompt "CanvasShelfで閲覧するフォルダを選択")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise InterruptedError("フォルダ選択をキャンセルしました。")
+        selected = result.stdout.strip()
+    elif os.name == "nt":
+        script = (
+            "Add-Type -AssemblyName System.Windows.Forms; "
+            "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog; "
+            "if ($dialog.ShowDialog() -eq 'OK') { [Console]::WriteLine($dialog.SelectedPath) }"
+        )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise InterruptedError("フォルダ選択をキャンセルしました。")
+        selected = result.stdout.strip()
+    else:
+        for command in ("zenity", "kdialog"):
+            if shutil.which(command) is None:
+                continue
+            args = [command, "--file-selection", "--directory"] if command == "zenity" else [command, "--getexistingdirectory"]
+            result = subprocess.run(args, capture_output=True, text=True, timeout=300, check=False)
+            if result.returncode != 0:
+                raise InterruptedError("フォルダ選択をキャンセルしました。")
+            selected = result.stdout.strip()
+            break
+        else:
+            raise RuntimeError("フォルダ選択ダイアログを利用できません。パスを直接入力してください。")
+
+    if not selected:
+        raise InterruptedError("フォルダ選択をキャンセルしました。")
+    selected_path = Path(selected).expanduser().resolve()
+    if not selected_path.is_dir():
+        raise FileNotFoundError("選択したフォルダが見つかりません。")
+    return selected_path
 
 
 def collection_map(collections: List[Dict[str, object]]) -> Dict[str, Dict[str, object]]:
@@ -386,6 +518,15 @@ class GalleryHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlsplit(self.path)
         route = unquote(parsed.path)
+        if route == "/api/collections/add":
+            self.add_collection()
+            return
+        if route == "/api/collections/remove":
+            self.remove_collection()
+            return
+        if route == "/api/pick-folder":
+            self.pick_folder()
+            return
         if route == "/api/images/delete":
             self.delete_image()
             return
@@ -406,6 +547,63 @@ class GalleryHandler(SimpleHTTPRequestHandler):
             {
                 "added": [{"id": item["id"], "label": item["label"]} for item in additions],
                 "addedCount": len(additions),
+            }
+        )
+
+    def read_json_body(self, max_size: int = MAX_REQUEST_SIZE) -> object:
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exc:
+            raise ValueError("リクエストが不正です。") from exc
+        if content_length <= 0 or content_length > max_size:
+            raise ValueError("リクエストが不正です。")
+        try:
+            return json.loads(self.rfile.read(content_length).decode("utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ValueError("リクエストが不正です。") from exc
+
+    def add_collection(self) -> None:
+        try:
+            payload = self.read_json_body()
+            path_text = payload.get("path") if isinstance(payload, dict) else None
+            collection = add_collection(path_text)
+        except FileExistsError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.CONFLICT)
+            return
+        except FileNotFoundError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.NOT_FOUND)
+            return
+        except (CollectionConfigError, OSError, ValueError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        self.send_json({"added": collection}, HTTPStatus.CREATED)
+
+    def remove_collection(self) -> None:
+        try:
+            payload = self.read_json_body()
+            collection_id = payload.get("collection") if isinstance(payload, dict) else None
+            removed = remove_collection(collection_id)
+        except KeyError:
+            self.send_json({"error": "Unknown collection"}, HTTPStatus.NOT_FOUND)
+            return
+        except (CollectionConfigError, OSError, ValueError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        self.send_json({"removed": removed})
+
+    def pick_folder(self) -> None:
+        try:
+            selected_path = pick_folder_with_os_dialog()
+        except InterruptedError as exc:
+            self.send_json({"cancelled": True, "error": str(exc)}, HTTPStatus.OK)
+            return
+        except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        self.send_json(
+            {
+                "path": relative_config_path(selected_path),
+                "label": selected_path.name or str(selected_path),
             }
         )
 

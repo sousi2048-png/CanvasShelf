@@ -96,9 +96,29 @@ h1 em { color: var(--coral); font-style: italic; }
 .sync-button-icon { font-size: 18px; font-weight: 400; line-height: .7; }
 .sync-button.is-busy .sync-button-icon { animation: spin .8s linear infinite; }
 .sync-status { min-width: 10em; color: var(--muted); font-size: 11px; line-height: 1.4; }
-.collection-actions + .folder-grid { margin-top: 40px; }
+.folder-picker { display: grid; grid-template-columns: minmax(220px, .75fr) minmax(360px, 1.25fr); align-items: center; gap: 28px; margin-top: 18px; padding: 23px 26px; border: 1px solid rgb(34 33 31 / 10%); border-radius: 20px; background: rgb(255 253 249 / 48%); }
+.folder-picker-copy h2 { margin: 6px 0 7px; font-family: Georgia, serif; font-size: 25px; font-weight: 400; letter-spacing: -.03em; }
+.folder-picker-copy p:last-child { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.folder-picker-controls { min-width: 0; }
+.folder-picker-button { background: var(--coral-deep); }
+.folder-picker-button:hover { background: var(--coral); }
+.folder-form { margin-top: 1px; }
+.folder-path-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.folder-path-row { display: flex; align-items: center; gap: 8px; }
+.folder-path-row input { min-width: 0; flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; outline: 0; background: rgb(255 255 255 / 60%); color: var(--ink); font-size: 12px; }
+.folder-path-row input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgb(227 107 84 / 12%); }
+.plain-button { padding: 9px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; white-space: nowrap; }
+.plain-button:hover { border-color: var(--ink); color: var(--ink); }
+.folder-status { min-height: 1.4em; margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.collection-actions + .folder-picker { margin-top: 18px; }
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 24px; margin-top: 40px; }
+.folder-card-shell { position: relative; min-width: 0; }
+.folder-card-shell.is-removing { opacity: .45; pointer-events: none; }
+.folder-remove { position: absolute; z-index: 3; top: 12px; right: 12px; display: grid; width: 30px; height: 30px; place-items: center; padding: 0; border: 1px solid rgb(255 255 255 / 45%); border-radius: 50%; background: rgb(34 33 31 / 68%); color: white; cursor: pointer; font-size: 19px; line-height: 1; opacity: 0; box-shadow: 0 5px 15px rgb(0 0 0 / 15%); transition: opacity .2s ease, background .2s ease, transform .2s ease; }
+.folder-card-shell:hover .folder-remove, .folder-card-shell:focus-within .folder-remove { opacity: 1; }
+.folder-remove:hover, .folder-remove:focus-visible { background: var(--coral); transform: scale(1.08); }
+.folder-remove:disabled { cursor: wait; opacity: .75; }
 
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 24px; margin-top: 68px; }
 .folder-card {
   position: relative;
   display: flex;
@@ -220,7 +240,12 @@ body.modal-open { overflow: hidden; }
   .collection-actions { width: 100%; align-items: stretch; flex-wrap: wrap; gap: 11px 15px; margin-top: 31px; }
   .collection-actions-copy { flex: 1 1 205px; }
   .sync-status { flex: 1 1 100%; min-width: 0; }
-  .collection-actions + .folder-grid { margin-top: 32px; }
+  .folder-picker { grid-template-columns: 1fr; gap: 18px; margin-top: 15px; padding: 19px; }
+  .folder-path-row { align-items: stretch; flex-wrap: wrap; }
+  .folder-path-row input { flex: 1 1 100%; }
+  .folder-path-row .sync-button { flex: 1; }
+  .folder-path-row .plain-button { flex: 0 0 auto; }
+  .collection-actions + .folder-picker { margin-top: 15px; }
   .folder-card { min-height: 290px; }
   .masonry-grid { column-count: 3; column-gap: 12px; }
   .masonry-grid[data-sort="name"] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -248,6 +273,8 @@ body.modal-open { overflow: hidden; }
   .hero-lede { font-size: 13px; }
   .preview-stack { width: 185px; transform: scale(.86); transform-origin: bottom left; }
   .folder-card { padding: 22px; }
+  .folder-picker-copy h2 { font-size: 22px; }
+  .folder-path-row .sync-button { width: 100%; flex-basis: 100%; }
   .masonry-grid { column-count: 2; }
   .masonry-grid[data-sort="name"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .site-footer { flex-direction: column; gap: 8px; }

@@ -90,6 +90,51 @@ class GalleryConfigTests(unittest.TestCase):
             self.assertEqual(len(saved["collections"]), 1)
             self.assertEqual(saved["collections"][0]["id"], "new-folder")
 
+    def test_add_collection_persists_relative_path_without_touching_folder(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name).resolve()
+            selected = root / "Selected Images"
+            selected.mkdir()
+            config_path = root / "collections.json"
+            config_path.write_text('{"collections": []}', encoding="utf-8")
+            with patch.object(server, "ROOT_DIR", root), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                added = server.add_collection("Selected Images")
+            saved = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(added["label"], "Selected Images")
+            self.assertEqual(saved["collections"][0]["path"], "Selected Images")
+            self.assertTrue(selected.is_dir())
+
+    def test_add_collection_rejects_duplicate_path(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            selected = root / "selected"
+            selected.mkdir()
+            config_path = root / "collections.json"
+            config_path.write_text(
+                json.dumps({"collections": [{"id": "selected", "label": "selected", "path": "selected"}]}),
+                encoding="utf-8",
+            )
+            with patch.object(server, "ROOT_DIR", root), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                with self.assertRaises(FileExistsError):
+                    server.add_collection("selected")
+
+    def test_remove_collection_only_updates_config(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            selected = root / "selected"
+            selected.mkdir()
+            config_path = root / "collections.json"
+            config_path.write_text(
+                json.dumps({"collections": [{"id": "selected", "label": "Selected", "path": "selected"}]}),
+                encoding="utf-8",
+            )
+            with patch.object(server, "ROOT_DIR", root), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                removed = server.remove_collection("selected")
+            saved = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(removed["id"], "selected")
+            self.assertEqual(saved["collections"], [])
+            self.assertTrue(selected.is_dir())
+
     def test_sort_preference_is_saved_per_collection(self):
         with tempfile.TemporaryDirectory() as directory_name:
             preferences_path = Path(directory_name) / ".gallery_preferences.json"

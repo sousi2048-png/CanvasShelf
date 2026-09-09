@@ -138,6 +138,7 @@
 
       state.collections = await fetchCollections();
       renderNavigation();
+      resetFolderPicker();
       renderHome();
       const addedCount = Number(payload.addedCount || 0);
       status.textContent = addedCount
@@ -148,6 +149,96 @@
     } finally {
       button.disabled = false;
       button.classList.remove("is-busy");
+    }
+  }
+
+  async function removeCollectionFromUi(collection, shell) {
+    if (!window.confirm(`「${collection.label}」を閲覧対象から外しますか？\nローカルのフォルダや画像は削除されません。`)) return;
+    const button = shell.querySelector(".folder-remove");
+    if (button) button.disabled = true;
+    shell.classList.add("is-removing");
+    try {
+      const response = await fetch("/api/collections/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collection: collection.id }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "閲覧対象から外せませんでした。");
+      state.collections = await fetchCollections();
+      renderNavigation();
+      renderHome();
+      showToast("閲覧対象から外しました（ファイルは残っています）");
+    } catch (error) {
+      shell.classList.remove("is-removing");
+      if (button) button.disabled = false;
+      showToast(error.message || "閲覧対象から外せませんでした。", "error");
+    }
+  }
+
+  function resetFolderPicker(message = "") {
+    const form = $("#folder-form");
+    const status = $("#folder-status");
+    form.hidden = true;
+    $("#folder-path").value = "";
+    status.textContent = message;
+  }
+
+  async function chooseFolderFromUi() {
+    const button = $("#choose-folder");
+    const form = $("#folder-form");
+    const status = $("#folder-status");
+    button.disabled = true;
+    button.classList.add("is-busy");
+    status.textContent = "フォルダ選択ダイアログを開いています…";
+    try {
+      const response = await fetch("/api/pick-folder", { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "フォルダ選択ダイアログを開けませんでした。");
+      if (payload.cancelled) {
+        status.textContent = "選択をキャンセルしました。";
+        return;
+      }
+      $("#folder-path").value = payload.path || "";
+      form.hidden = false;
+      status.textContent = "このパスを確認してから追加してください。";
+      $("#folder-path").focus();
+    } catch (error) {
+      form.hidden = false;
+      status.textContent = `${error.message || "フォルダを選択できませんでした。"} パスを直接入力できます。`;
+      $("#folder-path").focus();
+    } finally {
+      button.disabled = false;
+      button.classList.remove("is-busy");
+    }
+  }
+
+  async function addFolderFromUi(event) {
+    event.preventDefault();
+    const form = $("#folder-form");
+    const submit = form.querySelector('button[type="submit"]');
+    const status = $("#folder-status");
+    const path = $("#folder-path").value.trim();
+    if (!path) return;
+    submit.disabled = true;
+    status.textContent = "フォルダを登録しています…";
+    try {
+      const response = await fetch("/api/collections/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "フォルダを登録できませんでした。");
+      state.collections = await fetchCollections();
+      renderNavigation();
+      resetFolderPicker();
+      renderHome();
+      showToast(`「${payload.added?.label || "フォルダ"}」を閲覧対象に追加しました`);
+    } catch (error) {
+      status.textContent = error.message || "フォルダを登録できませんでした。";
+    } finally {
+      submit.disabled = false;
     }
   }
 
@@ -165,6 +256,8 @@
       return;
     }
     state.collections.forEach((collection) => {
+      const shell = document.createElement("article");
+      shell.className = "folder-card-shell";
       const card = document.createElement("a");
       card.className = "folder-card";
       card.dataset.collection = collection.id;
@@ -181,7 +274,15 @@
       bottom.className = "folder-card-bottom";
       bottom.innerHTML = `<div class="folder-card-copy"><p>${escapeHtml(collection.description || "ローカル画像コレクション")}</p></div><span class="folder-arrow" aria-hidden="true">↗</span>`;
       card.append(top, preview, bottom);
-      cardRoot.append(card);
+      const removeButton = document.createElement("button");
+      removeButton.className = "folder-remove";
+      removeButton.type = "button";
+      removeButton.setAttribute("aria-label", `${collection.label}を閲覧対象から外す`);
+      removeButton.title = "閲覧対象から外す（ファイルは削除しません）";
+      removeButton.innerHTML = "<span aria-hidden=\"true\">×</span><span class=\"sr-only\">閲覧対象から外す</span>";
+      removeButton.addEventListener("click", () => removeCollectionFromUi(collection, shell));
+      shell.append(card, removeButton);
+      cardRoot.append(shell);
     });
   }
 
@@ -380,6 +481,9 @@
 
   async function init() {
     $("#sync-collections").addEventListener("click", syncCollectionsFromUi);
+    $("#choose-folder").addEventListener("click", chooseFolderFromUi);
+    $("#folder-form").addEventListener("submit", addFolderFromUi);
+    $("#cancel-folder").addEventListener("click", () => resetFolderPicker());
     $("#search-input").addEventListener("input", renderGallery);
     $("#sort-select").addEventListener("change", () => {
       if (state.collection) saveSort(state.collection.id, $("#sort-select").value);
