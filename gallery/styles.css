@@ -247,6 +247,7 @@ body.modal-open { overflow: hidden; }
   .folder-path-row .plain-button { flex: 0 0 auto; }
   .collection-actions + .folder-picker { margin-top: 15px; }
   .folder-card { min-height: 290px; }
+  .folder-remove { opacity: 1; }
   .masonry-grid { column-count: 3; column-gap: 12px; }
   .masonry-grid[data-sort="name"] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .pin-card { margin-bottom: 12px; }
