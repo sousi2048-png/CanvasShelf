@@ -4,6 +4,12 @@ CanvasShelf is a local image viewer for browsing the photos and illustrations on
 
 The repository provides a ready-to-use desktop app as well as the source code. You can register any image folders from the home page, choose a folder-specific sort order, edit a folder's `memo.md` from its collection page, open images in a large lightbox, and move unwanted images to the operating system's Trash. Folder registrations and display preferences persist across restarts, while the original folders remain where they are.
 
+## CanvasShelf in action
+
+Here is an example of CanvasShelf displaying a local image collection in its masonry layout.
+
+[![CanvasShelf displaying a colorful local image collection in a masonry layout](gallery/test_image.png)](gallery/test_image.png)
+
 ## Download and start (Windows / macOS)
 
 Choose the path for your operating system below. You only need to download one ZIP from the repository's [**Releases**](../../releases) page; Python and uv are not required for the packaged app.

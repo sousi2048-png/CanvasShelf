@@ -37,6 +37,9 @@ memo.md
 *.tar
 *.gz
 
+# GitHub上でCanvasShelfの表示例として公開するスクリーンショット
+!gallery/test_image.png
+
 # macOS / Python / 一時ファイル
 .DS_Store
 __pycache__/
