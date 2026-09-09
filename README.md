@@ -6,7 +6,7 @@ CanvasShelf is independent of the ShortcutSave browser extension. It does not re
 
 ## Download the desktop app
 
-Open the repository's **Releases** page and download the package for your operating system. The release contains only the application bundle; your image folders stay on your computer and are never included in the download.
+Open the repository's [**Releases**](../../releases) page and download the package for your operating system. The release contains only the application bundle; your image folders stay on your computer and are never included in the download.
 
 - **Windows**: download `CanvasShelf-windows-x64.zip`, extract it, and double-click `CanvasShelf.exe`.
 - **macOS Apple Silicon**: download `CanvasShelf-macos-apple-silicon.zip`, extract it, and double-click `CanvasShelf.app`.
