@@ -501,6 +501,49 @@
     container.hidden = container.childElementCount <= 1;
   }
 
+  function setMemoEditorValue(memo) {
+    const input = $("#memo-input");
+    if (input) input.value = String(memo || "");
+  }
+
+  function setMemoSaveStatus(message, kind = "") {
+    const status = $("#memo-save-status");
+    if (!status) return;
+    status.textContent = message;
+    if (kind) status.dataset.kind = kind;
+    else delete status.dataset.kind;
+  }
+
+  async function saveMemoFromUi() {
+    if (!state.collection) return;
+    const input = $("#memo-input");
+    const button = $("#memo-save");
+    if (!input || !button || button.disabled) return;
+    button.disabled = true;
+    button.classList.add("is-busy");
+    setMemoSaveStatus("保存しています…");
+    try {
+      const response = await fetch("/api/memo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collection: state.collection.id, memo: input.value }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "メモを保存できませんでした。");
+      state.memo = typeof payload.memo === "string" ? payload.memo : input.value;
+      setMemoEditorValue(state.memo);
+      renderMemo(state.memo);
+      setMemoSaveStatus("保存しました");
+      showToast("メモを保存しました");
+    } catch (error) {
+      setMemoSaveStatus(error.message || "メモを保存できませんでした。", "error");
+      showToast(error.message || "メモを保存できませんでした。", "error");
+    } finally {
+      button.disabled = false;
+      button.classList.remove("is-busy");
+    }
+  }
+
   async function deleteImage(image, card) {
     if (!state.collection || !window.confirm(`「${image.name}」をゴミ箱へ移動しますか？`)) return;
     const button = card.querySelector(".pin-card-delete");
@@ -582,16 +625,20 @@
     setActiveCollection(collection.id);
     state.memo = "";
     renderMemo("");
+    setMemoEditorValue("");
+    setMemoSaveStatus("");
     $("#gallery-grid").innerHTML = '<div class="loading-card"><span class="loader"></span> 画像を並べています…</div>';
     try {
       const payload = await fetchImages(collection.id);
       state.images = payload.images;
       state.memo = payload.memo;
+      setMemoEditorValue(state.memo);
       renderMemo(state.memo);
       renderGallery();
     } catch (error) {
       state.images = [];
       state.memo = "";
+      setMemoEditorValue("");
       renderMemo("");
       $("#gallery-grid").innerHTML = `<div class="loading-card">${escapeHtml(error.message)}</div>`;
     }
@@ -637,6 +684,13 @@
     $("#sort-select").addEventListener("change", () => {
       if (state.collection) saveSort(state.collection.id, $("#sort-select").value);
       renderGallery();
+    });
+    $("#memo-save").addEventListener("click", saveMemoFromUi);
+    $("#memo-input").addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        void saveMemoFromUi();
+      }
     });
     $("#lightbox-close").addEventListener("click", closeLightbox);
     $("#lightbox-prev").addEventListener("click", () => moveLightbox(-1));

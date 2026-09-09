@@ -43,6 +43,7 @@ Each collection page provides:
 
 - A responsive masonry layout for local images.
 - The folder's root-level `memo.md`, when present, above the image grid.
+- An editor for the folder's root-level `memo.md`; saving creates the file when it does not exist. Markdown headings and lists are rendered above the grid. `Cmd/Ctrl+Enter` also saves the memo.
 - Filename search and per-collection sorting by newest, oldest, or name.
 - Persistent sort preferences in the browser and local server. Name sorting places images from left to right in each row.
 - Click-to-enlarge lightbox preview, with arrow-key navigation and `Esc` to close.

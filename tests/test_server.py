@@ -70,6 +70,24 @@ class GalleryConfigTests(unittest.TestCase):
             memo = server.read_memo({"path": directory})
             self.assertEqual(memo, "# メモ\n\n本文です。")
 
+    def test_writes_memo_and_creates_file_atomically(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            collection = {"path": directory}
+            saved = server.write_memo(collection, "# 新しいメモ\r\n\r\n本文です。")
+            self.assertEqual(saved, "# 新しいメモ\n\n本文です。")
+            self.assertEqual((directory / "memo.md").read_text(encoding="utf-8"), saved)
+            self.assertEqual(server.read_memo(collection), saved)
+
+            server.write_memo(collection, "")
+            self.assertTrue((directory / "memo.md").is_file())
+            self.assertEqual((directory / "memo.md").read_text(encoding="utf-8"), "")
+
+    def test_rejects_memo_larger_than_limit(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            with self.assertRaises(ValueError):
+                server.write_memo({"path": Path(directory_name)}, "あ" * (server.MAX_MEMO_SIZE // 2 + 1))
+
     def test_sync_collections_appends_new_image_directory_once(self):
         with tempfile.TemporaryDirectory() as directory_name:
             root = Path(directory_name)

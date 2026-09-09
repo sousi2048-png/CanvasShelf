@@ -47,6 +47,7 @@ SYNC_LOCK = threading.Lock()
 COLLECTIONS_LOCK = threading.Lock()
 PREFERENCES_LOCK = threading.Lock()
 DELETE_LOCK = threading.Lock()
+MEMO_LOCK = threading.Lock()
 DEFAULT_COLLECTIONS = [
     {"id": "Collection", "label": "Collection", "path": "../Arts/Collection", "description": "日常のひらめきと、あとで見返したい画像", "accent": "coral"},
     {"id": "Collection 2", "label": "Collection 2", "path": "../Arts/Collection 2", "description": "別にまとめておきたい、もうひとつのコレクション", "accent": "sage"},
@@ -404,6 +405,50 @@ def read_memo(collection: Dict[str, object]) -> str:
         return ""
 
 
+def write_memo(collection: Dict[str, object], memo: str) -> str:
+    """コレクション直下のmemo.mdを安全かつ原子的に保存する。
+
+    保存先は設定済みコレクションの直下に固定し、書き込み途中のファイルが
+    残らないよう同じディレクトリ内の一時ファイルから置き換える。空文字列も
+    有効な内容として扱うため、memo.mdの新規作成にも利用できる。
+    """
+    if not isinstance(memo, str):
+        raise ValueError("メモの内容が不正です。")
+    normalized = memo.replace("\r\n", "\n").replace("\r", "\n")
+    if len(normalized.encode("utf-8")) > MAX_MEMO_SIZE:
+        raise ValueError(f"メモは{MAX_MEMO_SIZE // 1024}KB以内で入力してください。")
+
+    directory = collection.get("path")
+    if not isinstance(directory, Path) or not directory.is_dir():
+        raise FileNotFoundError("画像フォルダが見つかりません。")
+    memo_path = directory / MEMO_FILENAME
+    if not is_safe_child(memo_path, directory):
+        raise ValueError("メモの保存先が不正です。")
+
+    temporary_path = None
+    with MEMO_LOCK:
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=directory,
+                prefix=f".{MEMO_FILENAME}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary:
+                temporary_path = Path(temporary.name)
+                temporary.write(normalized)
+                temporary.flush()
+                os.fsync(temporary.fileno())
+            os.replace(temporary_path, memo_path)
+        except OSError as exc:
+            raise OSError("memo.mdを保存できませんでした。") from exc
+        finally:
+            if temporary_path is not None and temporary_path.exists():
+                temporary_path.unlink(missing_ok=True)
+    return normalized
+
+
 def load_preferences_payload() -> Dict[str, object]:
     """ローカル保存された表示設定を読み込む。壊れた値は空設定として扱う。"""
     try:
@@ -614,6 +659,9 @@ class GalleryHandler(SimpleHTTPRequestHandler):
         if route == "/api/images/delete":
             self.delete_image()
             return
+        if route == "/api/memo":
+            self.update_memo()
+            return
         if route == "/api/preferences/sort":
             self.update_sort_preference()
             return
@@ -798,6 +846,41 @@ class GalleryHandler(SimpleHTTPRequestHandler):
                 "trashName": destination.name,
             }
         )
+
+    def update_memo(self) -> None:
+        """コレクション直下のmemo.mdを作成または更新する。"""
+        try:
+            payload = self.read_json_body(max_size=MAX_MEMO_SIZE + 8192)
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        collection_id = payload.get("collection") if isinstance(payload, dict) else None
+        memo = payload.get("memo") if isinstance(payload, dict) else None
+        if not isinstance(collection_id, str) or not isinstance(memo, str):
+            self.send_json({"error": "コレクションとメモの内容が必要です。"}, HTTPStatus.BAD_REQUEST)
+            return
+        try:
+            collections = collection_map(load_collections())
+        except CollectionConfigError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        collection = collections.get(collection_id)
+        if collection is None:
+            self.send_json({"error": "Unknown collection"}, HTTPStatus.BAD_REQUEST)
+            return
+        try:
+            saved_memo = write_memo(collection, memo)
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        except FileNotFoundError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.NOT_FOUND)
+            return
+        except OSError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+        self.send_json({"saved": True, "collection": collection_id, "memo": saved_memo})
 
     def send_json(self, value: object, status: HTTPStatus = HTTPStatus.OK) -> None:
         payload = json.dumps(value, ensure_ascii=False).encode("utf-8")
