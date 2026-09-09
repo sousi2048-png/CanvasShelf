@@ -33,39 +33,41 @@
           <h1 id="home-title">集めた画像を、<em>眺める。</em></h1>
           <p class="hero-lede">Pinterestのように、保存したPinを気分よく見返せるローカルギャラリーです。保存先を選んで、画像をクリックすると大きく表示できます。</p>
         </div>
-        <div class="collection-actions" aria-label="コレクションの更新">
-          <div class="collection-actions-copy">
-            <span class="collection-actions-kicker">COLLECTIONS</span>
-            <span>Arts/ に追加したフォルダを一覧へ反映</span>
-          </div>
-          <button id="sync-collections" class="sync-button" type="button">
-            <span class="sync-button-icon" aria-hidden="true">↻</span>
-            <span>フォルダを更新</span>
-          </button>
-          <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
-        </div>
-        <section class="folder-picker" aria-labelledby="folder-picker-title">
-          <div class="folder-picker-copy">
-            <p class="collection-actions-kicker">BROWSE SOURCES</p>
-            <h2 id="folder-picker-title">閲覧するフォルダを選択</h2>
-            <p>登録したフォルダだけをCanvasShelfで表示します。登録解除しても、ローカルのフォルダや画像は変更されません。</p>
-          </div>
-          <div class="folder-picker-controls">
-            <button id="choose-folder" class="sync-button folder-picker-button" type="button">
-              <span aria-hidden="true">＋</span>
-              <span>フォルダを選択</span>
+        <div class="home-actions-grid">
+          <div class="collection-actions" aria-label="コレクションの更新">
+            <div class="collection-actions-copy">
+              <span class="collection-actions-kicker">COLLECTIONS</span>
+              <span>Arts/ に追加したフォルダを一覧へ反映</span>
+            </div>
+            <button id="sync-collections" class="sync-button" type="button">
+              <span class="sync-button-icon" aria-hidden="true">↻</span>
+              <span>フォルダを更新</span>
             </button>
-            <form id="folder-form" class="folder-form" hidden>
-              <label class="folder-path-label" for="folder-path">フォルダのパス</label>
-              <div class="folder-path-row">
-                <input id="folder-path" name="path" type="text" placeholder="CanvasShelf基準の相対パス、または絶対パス" autocomplete="off" required>
-                <button class="sync-button" type="submit">このフォルダを追加</button>
-                <button id="cancel-folder" class="plain-button" type="button">キャンセル</button>
-              </div>
-              <p id="folder-status" class="folder-status" role="status" aria-live="polite"></p>
-            </form>
+            <span id="sync-status" class="sync-status" role="status" aria-live="polite"></span>
           </div>
-        </section>
+          <section class="folder-picker" aria-labelledby="folder-picker-title">
+            <div class="folder-picker-copy">
+              <p class="collection-actions-kicker">BROWSE SOURCES</p>
+              <h2 id="folder-picker-title">閲覧するフォルダを選択</h2>
+              <p>登録したフォルダだけをCanvasShelfで表示します。登録解除しても、ローカルのフォルダや画像は変更されません。</p>
+            </div>
+            <div class="folder-picker-controls">
+              <button id="choose-folder" class="sync-button folder-picker-button" type="button">
+                <span aria-hidden="true">＋</span>
+                <span>フォルダを選択</span>
+              </button>
+              <form id="folder-form" class="folder-form" hidden>
+                <label class="folder-path-label" for="folder-path">フォルダのパス</label>
+                <div class="folder-path-row">
+                  <input id="folder-path" name="path" type="text" placeholder="CanvasShelf基準の相対パス、または絶対パス" autocomplete="off" required>
+                  <button class="sync-button" type="submit">このフォルダを追加</button>
+                  <button id="cancel-folder" class="plain-button" type="button">キャンセル</button>
+                </div>
+                <p id="folder-status" class="folder-status" role="status" aria-live="polite"></p>
+              </form>
+            </div>
+          </section>
+        </div>
         <div id="folder-cards" class="folder-grid" aria-live="polite">
           <div class="loading-card"><span class="loader"></span> コレクションを読み込んでいます…</div>
         </div>
