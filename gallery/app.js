@@ -441,17 +441,15 @@
 
   function renderMemo(memo) {
     const container = $("#collection-memo");
+    const emptyState = $("#memo-empty");
     container.replaceChildren();
     const normalized = String(memo || "").replace(/\r\n?/g, "\n").trim();
     if (!normalized) {
       container.hidden = true;
+      if (emptyState) emptyState.hidden = false;
       return;
     }
-
-    const kicker = document.createElement("p");
-    kicker.className = "memo-kicker";
-    kicker.textContent = "MEMO";
-    container.append(kicker);
+    if (emptyState) emptyState.hidden = true;
 
     let paragraphLines = [];
     let list = null;
@@ -498,7 +496,12 @@
     });
     flushParagraph();
     closeList();
-    container.hidden = container.childElementCount <= 1;
+    container.hidden = false;
+  }
+
+  function setMemoEditorOpen(isOpen) {
+    $("#memo-editor").hidden = !isOpen;
+    $("#memo-view").hidden = isOpen;
   }
 
   function setMemoEditorValue(memo) {
@@ -534,6 +537,7 @@
       setMemoEditorValue(state.memo);
       renderMemo(state.memo);
       setMemoSaveStatus("保存しました");
+      setMemoEditorOpen(false);
       showToast("メモを保存しました");
     } catch (error) {
       setMemoSaveStatus(error.message || "メモを保存できませんでした。", "error");
@@ -625,6 +629,7 @@
     setActiveCollection(collection.id);
     state.memo = "";
     renderMemo("");
+    setMemoEditorOpen(false);
     setMemoEditorValue("");
     setMemoSaveStatus("");
     $("#gallery-grid").innerHTML = '<div class="loading-card"><span class="loader"></span> 画像を並べています…</div>';
@@ -686,6 +691,16 @@
       renderGallery();
     });
     $("#memo-save").addEventListener("click", saveMemoFromUi);
+    $("#memo-edit").addEventListener("click", () => {
+      setMemoSaveStatus("");
+      setMemoEditorOpen(true);
+      $("#memo-input").focus();
+    });
+    $("#memo-editor-cancel").addEventListener("click", () => {
+      setMemoEditorValue(state.memo);
+      setMemoSaveStatus("");
+      setMemoEditorOpen(false);
+    });
     $("#memo-input").addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();

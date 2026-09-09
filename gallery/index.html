@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f5f1eb">
     <title>CanvasShelf — Local image viewer</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/styles.css?v=20260909-canvasshelf-memo-editor">
+    <link rel="stylesheet" href="/styles.css?v=20260909-canvasshelf-memo-toggle">
   </head>
   <body>
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -109,9 +109,16 @@
           </div>
         </div>
 
-        <section id="collection-memo" class="collection-memo" hidden aria-label="コレクションのメモ"></section>
+        <section id="memo-view" class="memo-view" aria-label="コレクションのメモ">
+          <div class="memo-view-heading">
+            <p class="memo-kicker">MEMO</p>
+            <button id="memo-edit" class="plain-button memo-edit-button" type="button">メモを編集</button>
+          </div>
+          <section id="collection-memo" class="collection-memo" hidden></section>
+          <p id="memo-empty" class="memo-empty" hidden>メモはまだありません。右上の「メモを編集」から作成できます。</p>
+        </section>
 
-        <section class="memo-editor" aria-labelledby="memo-editor-title">
+        <section id="memo-editor" class="memo-editor" hidden aria-labelledby="memo-editor-title">
           <div class="memo-editor-heading">
             <div class="memo-editor-copy">
               <p class="memo-kicker">EDIT MEMO</p>
@@ -124,7 +131,10 @@
           <textarea id="memo-input" rows="7" spellcheck="false" placeholder="このフォルダについてのメモを入力…"></textarea>
           <div class="memo-editor-actions">
             <span class="memo-editor-hint">Markdownの見出し・箇条書きに対応 · ⌘ / Ctrl + Enterで保存</span>
-            <button id="memo-save" class="sync-button" type="button">メモを保存</button>
+            <div class="memo-editor-buttons">
+              <button id="memo-editor-cancel" class="plain-button" type="button">キャンセル</button>
+              <button id="memo-save" class="sync-button" type="button">メモを保存</button>
+            </div>
           </div>
         </section>
 
@@ -170,6 +180,6 @@
 
     <div id="gallery-toast" class="gallery-toast" hidden role="status" aria-live="polite"></div>
 
-    <script src="/app.js?v=20260909-canvasshelf-memo-editor" defer></script>
+    <script src="/app.js?v=20260909-canvasshelf-memo-toggle" defer></script>
   </body>
 </html>
