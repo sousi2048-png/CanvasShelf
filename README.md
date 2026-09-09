@@ -35,6 +35,8 @@ The refresh action is also available from the command line:
 
 Use `--arts-dir /path/to/Arts` to scan another directory or `--dry-run` to preview additions without writing the configuration. Relative paths in the configuration are resolved from the CanvasShelf directory; absolute paths are also accepted for folders outside the project.
 
+The home page can display collections in **manual**, **newest**, **oldest**, or **name** order. Newest and oldest use the modification times of the images in each collection. The selected mode is saved for the next visit. In manual mode, drag a collection card to a new position; the order is saved to `gallery_collections.json`. New folders discovered by a refresh or added from the folder picker are appended after the existing entries.
+
 ## Browse collections
 
 Each collection page provides:

@@ -9,9 +9,15 @@
     filtered: [],
     lightboxIndex: -1,
     toastTimer: null,
+    homeSort: "manual",
+    homeSortLoaded: false,
+    draggedCollectionId: null,
+    suppressCardClick: false,
   };
   const SORT_STORAGE_KEY = "pin-archive-sort-order";
   const SORT_VALUES = new Set(["newest", "oldest", "name"]);
+  const HOME_SORT_STORAGE_KEY = "canvas-shelf-home-sort";
+  const HOME_SORT_VALUES = new Set(["manual", "newest", "oldest", "name"]);
   const $ = (selector) => document.querySelector(selector);
 
   function getSavedSort(collectionId) {
@@ -92,7 +98,42 @@
   async function fetchCollections() {
     const response = await fetch("/api/collections");
     if (!response.ok) throw new Error("コレクション一覧を取得できませんでした。");
-    return (await response.json()).collections || [];
+    const payload = await response.json();
+    if (HOME_SORT_VALUES.has(payload.homeSort)) {
+      state.homeSort = payload.homeSort;
+      state.homeSortLoaded = true;
+    } else if (!state.homeSortLoaded) {
+      state.homeSort = getSavedHomeSortFromBrowser();
+    }
+    return payload.collections || [];
+  }
+
+  function getSavedHomeSortFromBrowser() {
+    try {
+      const value = JSON.parse(localStorage.getItem(HOME_SORT_STORAGE_KEY) || '"manual"');
+      return HOME_SORT_VALUES.has(value) ? value : "manual";
+    } catch {
+      return "manual";
+    }
+  }
+
+  function saveHomeSort(value) {
+    if (!HOME_SORT_VALUES.has(value)) return;
+    state.homeSort = value;
+    state.homeSortLoaded = true;
+    try {
+      localStorage.setItem(HOME_SORT_STORAGE_KEY, JSON.stringify(value));
+    } catch {
+      // localStorage が使えない環境でも、表示自体は継続する。
+    }
+    fetch("/api/preferences/home-sort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sort: value }),
+      keepalive: true,
+    }).catch(() => {
+      // サーバー保存に失敗しても、ブラウザ側の保存値で表示を継続する。
+    });
   }
 
   async function fetchImages(collectionId) {
@@ -242,6 +283,53 @@
     }
   }
 
+  function sortCollections(collections, sort) {
+    if (sort === "manual") return [...collections];
+    return [...collections].sort((left, right) => {
+      if (sort === "name") {
+        return left.label.localeCompare(right.label, "ja") || left.id.localeCompare(right.id, "ja");
+      }
+      const leftModified = Number(sort === "oldest" ? left.oldestModified : left.newestModified) || 0;
+      const rightModified = Number(sort === "oldest" ? right.oldestModified : right.newestModified) || 0;
+      const difference = sort === "oldest" ? leftModified - rightModified : rightModified - leftModified;
+      return difference || left.label.localeCompare(right.label, "ja") || left.id.localeCompare(right.id, "ja");
+    });
+  }
+
+  async function saveCollectionOrder() {
+    const order = state.collections.map((collection) => collection.id);
+    try {
+      const response = await fetch("/api/collections/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "フォルダの並び順を保存できませんでした。");
+      showToast("フォルダの並び順を保存しました");
+    } catch (error) {
+      try {
+        state.collections = await fetchCollections();
+        renderNavigation();
+        renderHome();
+      } catch {
+        // 元の表示を維持し、保存エラーだけを通知する。
+      }
+      showToast(error.message || "フォルダの並び順を保存できませんでした。", "error");
+    }
+  }
+
+  function moveCollection(draggedId, targetId) {
+    if (state.homeSort !== "manual" || draggedId === targetId) return;
+    const fromIndex = state.collections.findIndex((collection) => collection.id === draggedId);
+    const targetIndex = state.collections.findIndex((collection) => collection.id === targetId);
+    if (fromIndex < 0 || targetIndex < 0) return;
+    const [moved] = state.collections.splice(fromIndex, 1);
+    state.collections.splice(targetIndex, 0, moved);
+    renderHome();
+    void saveCollectionOrder();
+  }
+
   function renderHome() {
     state.collection = null;
     state.images = [];
@@ -249,20 +337,74 @@
     $("#home-view").hidden = false;
     $("#gallery-view").hidden = true;
     setActiveCollection(null);
+    const homeSort = HOME_SORT_VALUES.has(state.homeSort) ? state.homeSort : "manual";
+    $("#home-sort-select").value = homeSort;
+    $("#home-sort-help").textContent = homeSort === "manual"
+      ? "カードをドラッグして並び替えできます。並び順は自動で保存されます。"
+      : "並び替えを「手動順」にすると、カードをドラッグして順番を変更できます。";
     const cardRoot = $("#folder-cards");
     cardRoot.replaceChildren();
     if (!state.collections.length) {
       cardRoot.innerHTML = '<div class="loading-card">表示できるコレクションがありません。</div>';
       return;
     }
-    state.collections.forEach((collection) => {
+    const collections = sortCollections(state.collections, homeSort);
+    collections.forEach((collection) => {
       const shell = document.createElement("article");
       shell.className = "folder-card-shell";
+      shell.dataset.collection = collection.id;
+      shell.draggable = homeSort === "manual";
+      shell.classList.toggle("is-sort-disabled", homeSort !== "manual");
+      shell.addEventListener("dragstart", (event) => {
+        if (homeSort !== "manual") {
+          event.preventDefault();
+          return;
+        }
+        state.draggedCollectionId = collection.id;
+        state.suppressCardClick = true;
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", collection.id);
+        shell.classList.add("is-dragging");
+        cardRoot.classList.add("is-dragging-active");
+      });
+      shell.addEventListener("dragover", (event) => {
+        if (homeSort !== "manual" || !state.draggedCollectionId || state.draggedCollectionId === collection.id) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        shell.classList.add("is-drag-over");
+      });
+      shell.addEventListener("dragleave", () => shell.classList.remove("is-drag-over"));
+      shell.addEventListener("drop", (event) => {
+        event.preventDefault();
+        shell.classList.remove("is-drag-over");
+        const draggedId = state.draggedCollectionId || event.dataTransfer.getData("text/plain");
+        state.draggedCollectionId = null;
+        cardRoot.classList.remove("is-dragging-active");
+        moveCollection(draggedId, collection.id);
+        window.setTimeout(() => { state.suppressCardClick = false; }, 0);
+      });
+      shell.addEventListener("dragend", () => {
+        shell.classList.remove("is-dragging");
+        cardRoot.classList.remove("is-dragging-active");
+        cardRoot.querySelectorAll(".is-drag-over").forEach((item) => item.classList.remove("is-drag-over"));
+        state.draggedCollectionId = null;
+        window.setTimeout(() => { state.suppressCardClick = false; }, 0);
+      });
       const card = document.createElement("a");
       card.className = "folder-card";
       card.dataset.collection = collection.id;
       card.dataset.accent = collection.accent || "coral";
       card.href = `/${encodeURIComponent(collection.id)}`;
+      card.draggable = false;
+      card.addEventListener("click", (event) => {
+        if (state.suppressCardClick) event.preventDefault();
+      });
+      const dragHandle = document.createElement("span");
+      dragHandle.className = "folder-drag-handle";
+      dragHandle.title = homeSort === "manual" ? "ドラッグして並び替え" : "手動順で並び替えできます";
+      dragHandle.setAttribute("aria-hidden", "true");
+      dragHandle.textContent = "⠿";
+      dragHandle.addEventListener("click", (event) => event.preventDefault());
       const top = document.createElement("div");
       top.className = "folder-card-top";
       top.innerHTML = `<h2>${escapeHtml(collection.label)}</h2><span class="count">${collection.count} images</span>`;
@@ -273,7 +415,7 @@
       const bottom = document.createElement("div");
       bottom.className = "folder-card-bottom";
       bottom.innerHTML = `<div class="folder-card-copy"><p>${escapeHtml(collection.description || "ローカル画像コレクション")}</p></div><span class="folder-arrow" aria-hidden="true">↗</span>`;
-      card.append(top, preview, bottom);
+      card.append(dragHandle, top, preview, bottom);
       const removeButton = document.createElement("button");
       removeButton.className = "folder-remove";
       removeButton.type = "button";
@@ -484,6 +626,10 @@
     $("#choose-folder").addEventListener("click", chooseFolderFromUi);
     $("#folder-form").addEventListener("submit", addFolderFromUi);
     $("#cancel-folder").addEventListener("click", () => resetFolderPicker());
+    $("#home-sort-select").addEventListener("change", () => {
+      saveHomeSort($("#home-sort-select").value);
+      renderHome();
+    });
     $("#search-input").addEventListener("input", renderGallery);
     $("#sort-select").addEventListener("change", () => {
       if (state.collection) saveSort(state.collection.id, $("#sort-select").value);
@@ -505,6 +651,7 @@
     try {
       state.collections = await fetchCollections();
       renderNavigation();
+      $("#home-sort-select").value = state.homeSort;
       const collectionId = location.pathname.replace(/^\//, "").replace(/\/$/, "");
       if (collectionId) await renderGalleryPage(collectionId);
       else renderHome();

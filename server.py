@@ -67,6 +67,7 @@ IMAGE_EXTENSIONS = {
 MEMO_FILENAME = "memo.md"
 MAX_MEMO_SIZE = 512 * 1024
 SORT_VALUES = {"newest", "oldest", "name"}
+HOME_SORT_VALUES = {"manual", "newest", "oldest", "name"}
 MAX_REQUEST_SIZE = 64 * 1024
 
 
@@ -196,6 +197,47 @@ def remove_collection(collection_id: str) -> Dict[str, str]:
                     "path": str(removed.get("path", "")),
                 }
     raise KeyError("Unknown collection")
+
+
+def reorder_collections(collection_ids: object) -> List[str]:
+    """設定済みコレクションの手動順を保存する。
+
+    実在するフォルダだけがAPIに返るため、欠落したフォルダの設定は保持したまま、
+    表示中のコレクションだけを元の位置へ差し替える。
+    """
+    if not isinstance(collection_ids, list) or not all(isinstance(item, str) for item in collection_ids):
+        raise ValueError("コレクション順はIDの配列で指定してください。")
+    if len(set(collection_ids)) != len(collection_ids):
+        raise ValueError("コレクションIDが重複しています。")
+    if any(not COLLECTION_ID_PATTERN.fullmatch(item) for item in collection_ids):
+        raise ValueError("コレクションIDが不正です。")
+
+    with COLLECTIONS_LOCK:
+        visible = load_collections()
+        visible_ids = [str(collection["id"]) for collection in visible]
+        if set(collection_ids) != set(visible_ids) or len(collection_ids) != len(visible_ids):
+            raise ValueError("表示中のコレクションをすべて含めてください。")
+
+        config = load_raw_collection_config()
+        raw_collections = config["collections"]
+        visible_ids_set = set(visible_ids)
+        ordered_by_id = {
+            str(raw["id"]): raw
+            for raw in raw_collections
+            if isinstance(raw, dict) and isinstance(raw.get("id"), str) and raw.get("id") in visible_ids_set
+        }
+        ordered_visible = [ordered_by_id[collection_id] for collection_id in collection_ids]
+        replacement_index = 0
+        reordered_raw = []
+        for raw in raw_collections:
+            if isinstance(raw, dict) and isinstance(raw.get("id"), str) and raw.get("id") in visible_ids_set:
+                reordered_raw.append(ordered_visible[replacement_index])
+                replacement_index += 1
+            else:
+                reordered_raw.append(raw)
+        config["collections"] = reordered_raw
+        write_sync_config(COLLECTION_CONFIG_PATH, config)
+    return list(collection_ids)
 
 
 def pick_folder_with_os_dialog() -> Path:
@@ -362,13 +404,18 @@ def read_memo(collection: Dict[str, object]) -> str:
         return ""
 
 
-def load_sort_preferences() -> Dict[str, str]:
-    """フォルダ別の並び順を読み込む。壊れた保存値は無視する。"""
+def load_preferences_payload() -> Dict[str, object]:
+    """ローカル保存された表示設定を読み込む。壊れた値は空設定として扱う。"""
     try:
         payload = json.loads(PREFERENCES_PATH.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return {}
-    raw_preferences = payload.get("sort") if isinstance(payload, dict) else None
+    return payload if isinstance(payload, dict) else {}
+
+
+def load_sort_preferences() -> Dict[str, str]:
+    """フォルダ別の画像並び順を読み込む。壊れた保存値は無視する。"""
+    raw_preferences = load_preferences_payload().get("sort")
     if not isinstance(raw_preferences, dict):
         return {}
     return {
@@ -378,41 +425,63 @@ def load_sort_preferences() -> Dict[str, str]:
     }
 
 
+def load_home_sort_preference() -> str | None:
+    """トップページのコレクション並び順を読み込む。未設定時はNoneを返す。"""
+    value = load_preferences_payload().get("homeSort")
+    return str(value) if str(value) in HOME_SORT_VALUES else None
+
+
+def write_preferences_payload(payload: Dict[str, object]) -> None:
+    """表示設定を原子的に保存する。"""
+    temporary_path = None
+    try:
+        PREFERENCES_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=PREFERENCES_PATH.parent,
+            prefix=f".{PREFERENCES_PATH.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(payload, temporary, ensure_ascii=False, indent=2)
+            temporary.write("\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, PREFERENCES_PATH)
+    except OSError as exc:
+        raise ValueError(f"表示設定を保存できません: {exc}") from exc
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink(missing_ok=True)
+
+
 def save_sort_preference(collection_id: str, value: str) -> None:
     """フォルダ別の並び順を原子的に保存する。"""
     if not COLLECTION_ID_PATTERN.fullmatch(collection_id) or value not in SORT_VALUES:
         raise ValueError("並び順の保存値が不正です。")
     with PREFERENCES_LOCK:
+        payload = load_preferences_payload()
         preferences = load_sort_preferences()
         preferences[collection_id] = value
-        payload = {"sort": preferences}
-        temporary_path = None
-        try:
-            PREFERENCES_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                dir=PREFERENCES_PATH.parent,
-                prefix=f".{PREFERENCES_PATH.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary:
-                temporary_path = Path(temporary.name)
-                json.dump(payload, temporary, ensure_ascii=False, indent=2)
-                temporary.write("\n")
-                temporary.flush()
-                os.fsync(temporary.fileno())
-            os.replace(temporary_path, PREFERENCES_PATH)
-        except OSError as exc:
-            raise ValueError(f"並び順を保存できません: {exc}") from exc
-        finally:
-            if temporary_path is not None and temporary_path.exists():
-                temporary_path.unlink(missing_ok=True)
+        payload["sort"] = preferences
+        write_preferences_payload(payload)
+
+
+def save_home_sort_preference(value: str) -> None:
+    """トップページのコレクション並び順を原子的に保存する。"""
+    if value not in HOME_SORT_VALUES:
+        raise ValueError("トップページの並び順が不正です。")
+    with PREFERENCES_LOCK:
+        payload = load_preferences_payload()
+        payload["homeSort"] = value
+        write_preferences_payload(payload)
 
 
 def sync_collections() -> List[Dict[str, str]]:
     """Arts/を走査し、新しい画像フォルダを設定へ追記する。"""
-    with SYNC_LOCK:
+    with COLLECTIONS_LOCK, SYNC_LOCK:
         config = load_sync_config(COLLECTION_CONFIG_PATH)
         additions = discover_new_collections(ARTS_DIR, config)
         if additions:
@@ -472,6 +541,16 @@ class GalleryHandler(SimpleHTTPRequestHandler):
             public = []
             for collection in collections:
                 images = list_images(collection)
+                if images:
+                    newest_modified = float(images[0]["modified"])
+                    oldest_modified = float(images[-1]["modified"])
+                else:
+                    try:
+                        directory_modified = collection["path"].stat().st_mtime
+                    except OSError:
+                        directory_modified = 0
+                    newest_modified = directory_modified
+                    oldest_modified = directory_modified
                 public.append(
                     {
                         "id": collection["id"],
@@ -481,9 +560,11 @@ class GalleryHandler(SimpleHTTPRequestHandler):
                         "count": len(images),
                         "previews": images[:3],
                         "sort": sort_preferences.get(str(collection["id"]), "newest"),
+                        "newestModified": newest_modified,
+                        "oldestModified": oldest_modified,
                     }
                 )
-            self.send_json({"collections": public})
+            self.send_json({"collections": public, "homeSort": load_home_sort_preference()})
             return
 
         if route == "/api/images":
@@ -524,6 +605,9 @@ class GalleryHandler(SimpleHTTPRequestHandler):
         if route == "/api/collections/remove":
             self.remove_collection()
             return
+        if route == "/api/collections/reorder":
+            self.reorder_collections_api()
+            return
         if route == "/api/pick-folder":
             self.pick_folder()
             return
@@ -532,6 +616,9 @@ class GalleryHandler(SimpleHTTPRequestHandler):
             return
         if route == "/api/preferences/sort":
             self.update_sort_preference()
+            return
+        if route == "/api/preferences/home-sort":
+            self.update_home_sort_preference()
             return
         if route != "/api/sync-collections":
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -591,6 +678,16 @@ class GalleryHandler(SimpleHTTPRequestHandler):
             return
         self.send_json({"removed": removed})
 
+    def reorder_collections_api(self) -> None:
+        try:
+            payload = self.read_json_body()
+            order = payload.get("order") if isinstance(payload, dict) else None
+            saved_order = reorder_collections(order)
+        except (CollectionConfigError, OSError, ValueError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        self.send_json({"order": saved_order})
+
     def pick_folder(self) -> None:
         try:
             selected_path = pick_folder_with_os_dialog()
@@ -640,6 +737,18 @@ class GalleryHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
         self.send_json({"collection": collection_id, "sort": value})
+
+    def update_home_sort_preference(self) -> None:
+        try:
+            payload = self.read_json_body(max_size=8192)
+            value = payload.get("sort") if isinstance(payload, dict) else None
+            if not isinstance(value, str):
+                raise ValueError("トップページの並び順が必要です。")
+            save_home_sort_preference(value)
+        except (OSError, ValueError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        self.send_json({"sort": value})
 
     def delete_image(self) -> None:
         try:

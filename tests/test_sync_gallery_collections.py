@@ -30,6 +30,25 @@ class GalleryCollectionSyncTests(unittest.TestCase):
             (arts_dir / "notes" / "readme.txt").write_text("not an image", encoding="utf-8")
             self.assertEqual(sync.discover_new_collections(arts_dir, {"collections": []}), [])
 
+    def test_discovered_directories_are_returned_for_append_after_existing_items(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            arts_dir = root / "Arts"
+            existing_directory = arts_dir / "Existing"
+            new_directory = arts_dir / "New"
+            existing_directory.mkdir(parents=True)
+            new_directory.mkdir()
+            (new_directory / "sample.jpg").write_bytes(b"image")
+            config = {
+                "collections": [
+                    {"id": "existing", "label": "Existing", "path": str(existing_directory)},
+                ]
+            }
+            additions = sync.discover_new_collections(arts_dir, config)
+            self.assertEqual([item["label"] for item in additions], ["New"])
+            config["collections"].extend(additions)
+            self.assertEqual([item["label"] for item in config["collections"]], ["Existing", "New"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -135,6 +135,53 @@ class GalleryConfigTests(unittest.TestCase):
             self.assertEqual(saved["collections"], [])
             self.assertTrue(selected.is_dir())
 
+    def test_reorder_collections_persists_visible_order_and_keeps_missing_entry(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            first = root / "first"
+            second = root / "second"
+            first.mkdir()
+            second.mkdir()
+            config_path = root / "collections.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "collections": [
+                            {"id": "first", "label": "First", "path": "first"},
+                            {"id": "gone", "label": "Gone", "path": "missing"},
+                            {"id": "second", "label": "Second", "path": "second"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.object(server, "ROOT_DIR", root), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                saved_order = server.reorder_collections(["second", "first"])
+            saved = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved_order, ["second", "first"])
+            self.assertEqual([item["id"] for item in saved["collections"]], ["second", "gone", "first"])
+
+    def test_reorder_collections_requires_all_visible_ids(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            (root / "first").mkdir()
+            (root / "second").mkdir()
+            config_path = root / "collections.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "collections": [
+                            {"id": "first", "label": "First", "path": "first"},
+                            {"id": "second", "label": "Second", "path": "second"},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.object(server, "ROOT_DIR", root), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                with self.assertRaises(ValueError):
+                    server.reorder_collections(["first"])
+
     def test_sort_preference_is_saved_per_collection(self):
         with tempfile.TemporaryDirectory() as directory_name:
             preferences_path = Path(directory_name) / ".gallery_preferences.json"
@@ -143,6 +190,18 @@ class GalleryConfigTests(unittest.TestCase):
                 server.save_sort_preference("other", "oldest")
                 preferences = server.load_sort_preferences()
             self.assertEqual(preferences, {"photos": "name", "other": "oldest"})
+
+    def test_home_sort_preference_is_saved_without_overwriting_image_sort(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            preferences_path = Path(directory_name) / ".gallery_preferences.json"
+            with patch.object(server, "PREFERENCES_PATH", preferences_path):
+                server.save_sort_preference("photos", "name")
+                server.save_home_sort_preference("oldest")
+                server.save_sort_preference("other", "newest")
+                preferences = json.loads(preferences_path.read_text(encoding="utf-8"))
+                home_sort = server.load_home_sort_preference()
+            self.assertEqual(home_sort, "oldest")
+            self.assertEqual(preferences["sort"], {"photos": "name", "other": "newest"})
 
     def test_moves_image_to_trash_without_overwriting_existing_file(self):
         with tempfile.TemporaryDirectory() as directory_name:
