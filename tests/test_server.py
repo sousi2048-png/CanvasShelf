@@ -90,6 +90,35 @@ class GalleryConfigTests(unittest.TestCase):
             self.assertEqual(len(saved["collections"]), 1)
             self.assertEqual(saved["collections"][0]["id"], "new-folder")
 
+    def test_sync_collections_keeps_existing_order_and_appends_new_items(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            arts_dir = root / "Arts"
+            existing_directory = arts_dir / "Existing"
+            new_directory = arts_dir / "New"
+            existing_directory.mkdir(parents=True)
+            new_directory.mkdir()
+            (existing_directory / "existing.jpg").write_bytes(b"existing")
+            (new_directory / "new.jpg").write_bytes(b"new")
+            config_path = root / "collections.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "collections": [
+                            {"id": "existing", "label": "Existing", "path": str(existing_directory)},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(server, "ARTS_DIR", arts_dir), patch.object(server, "COLLECTION_CONFIG_PATH", config_path):
+                additions = server.sync_collections()
+
+            saved = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual([item["label"] for item in additions], ["New"])
+            self.assertEqual([item["label"] for item in saved["collections"]], ["Existing", "New"])
+
     def test_add_collection_persists_relative_path_without_touching_folder(self):
         with tempfile.TemporaryDirectory() as directory_name:
             root = Path(directory_name).resolve()
