@@ -400,7 +400,9 @@ def read_memo(collection: Dict[str, object]) -> str:
     if not is_safe_child(memo_path, directory) or not memo_path.is_file():
         return ""
     try:
-        return memo_path.read_text(encoding="utf-8-sig")[:MAX_MEMO_SIZE].strip()
+        # 表示側では前後の空白を整えるが、編集欄では入力内容をそのまま
+        # 復元できるよう、ここではtrimしない。
+        return memo_path.read_text(encoding="utf-8-sig")[:MAX_MEMO_SIZE]
     except (OSError, UnicodeError):
         return ""
 

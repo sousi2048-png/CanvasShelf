@@ -66,9 +66,9 @@ class GalleryConfigTests(unittest.TestCase):
     def test_reads_memo_from_collection_root(self):
         with tempfile.TemporaryDirectory() as directory_name:
             directory = Path(directory_name)
-            (directory / "memo.md").write_text("# メモ\n\n本文です。", encoding="utf-8")
+            (directory / "memo.md").write_text("\n# メモ\n\n本文です。\n", encoding="utf-8")
             memo = server.read_memo({"path": directory})
-            self.assertEqual(memo, "# メモ\n\n本文です。")
+            self.assertEqual(memo, "\n# メモ\n\n本文です。\n")
 
     def test_writes_memo_and_creates_file_atomically(self):
         with tempfile.TemporaryDirectory() as directory_name:
