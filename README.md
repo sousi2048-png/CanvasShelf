@@ -1,20 +1,28 @@
 # CanvasShelf
 
+## Download and start (Windows / macOS)
+
+Choose the path for your operating system below. You only need to download one ZIP from the repository's [**Releases**](../../releases) page; Python and uv are not required for the packaged app.
+
+### Windows
+
+1. Download [`CanvasShelf-windows-x64.zip`](../../releases/latest/download/CanvasShelf-windows-x64.zip) from the latest release.
+2. Extract the ZIP to a location of your choice.
+3. Open the extracted folder and double-click `CanvasShelf.exe`.
+4. CanvasShelf starts its local server and opens the viewer in your default browser. If Windows SmartScreen appears, confirm that the file came from this repository, then choose **More info → Run anyway**.
+
+### macOS
+
+1. Choose the ZIP that matches your Mac. On Apple-menu **About This Mac**, Macs with **Chip** use [`CanvasShelf-macos-apple-silicon.zip`](../../releases/latest/download/CanvasShelf-macos-apple-silicon.zip); Macs with **Processor** use [`CanvasShelf-macos-intel.zip`](../../releases/latest/download/CanvasShelf-macos-intel.zip).
+2. Extract the ZIP.
+3. Double-click the extracted `CanvasShelf.app`. If macOS blocks the first launch, Control-click the app, choose **Open**, and confirm.
+4. CanvasShelf starts its local server and opens the viewer in your default browser. Release builds are not signed with an Apple Developer certificate, so the one-time confirmation may be shown.
+
+The release packages contain the application only. Your image folders remain on your computer and are never included in the download. Folder registrations, memo edits, and sort preferences are stored separately in the per-user CanvasShelf data directory (`%APPDATA%\CanvasShelf` on Windows, `~/Library/Application Support/CanvasShelf` on macOS), so replacing the app with a newer release keeps your settings.
+
 CanvasShelf is a local-only image viewer. It presents images from folders you choose in a responsive masonry layout and opens them in a lightbox. The server listens on the local machine by default, so image files are not uploaded anywhere.
 
 CanvasShelf is independent of the ShortcutSave browser extension. It does not require a particular folder layout: folders can be registered from the home page, while `../Arts/` is available as a convenient scan target when it exists next to this project.
-
-## Download the desktop app
-
-Open the repository's [**Releases**](../../releases) page and download the package for your operating system. The release contains only the application bundle; your image folders stay on your computer and are never included in the download.
-
-- **Windows**: download `CanvasShelf-windows-x64.zip`, extract it, and double-click `CanvasShelf.exe`.
-- **macOS Apple Silicon**: download `CanvasShelf-macos-apple-silicon.zip`, extract it, and double-click `CanvasShelf.app`.
-- **macOS Intel**: download `CanvasShelf-macos-intel.zip`, extract it, and double-click `CanvasShelf.app`.
-
-The app opens the local viewer in your default browser. Python and uv are not required for the downloaded app. On the first macOS launch, macOS may require Control-clicking `CanvasShelf.app`, choosing **Open**, and confirming the prompt because release builds are not signed with an Apple Developer certificate. Windows SmartScreen may show a similar first-run warning for an unsigned download; verify that the file came from this repository before choosing **More info → Run anyway**.
-
-Folder registrations, memo edits, and sort preferences are stored in the per-user CanvasShelf data directory, separate from the app itself (`%APPDATA%\CanvasShelf` on Windows, `~/Library/Application Support/CanvasShelf` on macOS). They remain available when you replace the app with a newer release. The app does not copy or upload the images you register.
 
 ## Requirements
 
