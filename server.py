@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CanvasShelf: local Pinterest-like gallery for configurable image collections."""
+"""CanvasShelf: local masonry image viewer for configurable image collections."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ COLLECTIONS_LOCK = threading.Lock()
 PREFERENCES_LOCK = threading.Lock()
 DELETE_LOCK = threading.Lock()
 DEFAULT_COLLECTIONS = [
-    {"id": "Collection", "label": "Collection", "path": "../Arts/Collection", "description": "日常のひらめきと、あとで見返したいPin", "accent": "coral"},
+    {"id": "Collection", "label": "Collection", "path": "../Arts/Collection", "description": "日常のひらめきと、あとで見返したい画像", "accent": "coral"},
     {"id": "Collection 2", "label": "Collection 2", "path": "../Arts/Collection 2", "description": "別にまとめておきたい、もうひとつのコレクション", "accent": "sage"},
 ]
 COLLECTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")

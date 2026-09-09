@@ -1,6 +1,6 @@
 # CanvasShelf
 
-CanvasShelf is a local Pinterest-style image gallery. It serves the shared image collections under `../Arts/` and keeps the gallery UI separate from the Pinterest downloader extension.
+CanvasShelf is a local image viewer with a responsive masonry layout. It serves the shared image collections under `../Arts/` and keeps the viewer UI separate from the image downloader extension.
 
 ## Run
 
