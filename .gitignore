@@ -14,10 +14,31 @@ README_ja.md
 *.tiff
 *.heic
 *.ico
+*.raw
+*.dng
+*.cr2
+*.cr3
+*.nef
+*.arw
+*.orf
+*.rw2
+*.psd
+*.psb
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+*.tar
+*.gz
 
 # macOS / Python / 一時ファイル
 .DS_Store
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+.env
 *.log
